@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trulience Avatar</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f0f;
+      color: #f0f0f0;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #avatar-wrap {
+      flex: 1;
+      position: relative;
+      background: #1a1a1a;
+      overflow: hidden;
+    }
+
+    #myvideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    #status-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid #333;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      color: #aaa;
+      backdrop-filter: blur(6px);
+    }
+
+    #status-badge.connected { color: #4ade80; border-color: #4ade80; }
+    #status-badge.error     { color: #f87171; border-color: #f87171; }
+
+    #controls {
+      background: #111;
+      border-top: 1px solid #222;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    #btn-connect    { background: #4ade80; color: #0f0f0f; }
+    #btn-disconnect { background: #f87171; color: #0f0f0f; }
+    #btn-mic        { background: #333; color: #f0f0f0; }
+    #btn-mic.muted  { background: #f87171; }
+
+    #text-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    #textBox {
+      flex: 1;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #f0f0f0;
+      font-size: 14px;
+      outline: none;
+    }
+
+    #textBox:focus { border-color: #555; }
+
+    #btn-send {
+      flex: 0 0 auto;
+      padding: 10px 18px;
+      background: #6366f1;
+      color: white;
+    }
+
+    /* Config modal */
+    #config-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    #config-box {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 14px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    #config-box h2 { font-size: 18px; font-weight: 700; }
+    #config-box p  { font-size: 13px; color: #888; line-height: 1.5; }
+
+    label { font-size: 13px; color: #aaa; display: block; margin-bottom: 4px; }
+
+    input[type="text"] {
+      width: 100%;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #f0f0f0;
+      font-size: 14px;
+      outline: none;
+    }
+
+    input[type="text"]:focus { border-color: #555; }
+
+    #btn-start {
+      background: #6366f1;
+      color: white;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Config modal shown on first load -->
+  <div id="config-modal">
+    <div id="config-box">
+      <h2>🤖 Trulience Avatar</h2>
+      <p>Enter your Avatar ID and token from the <a href="https://trulience.com" target="_blank" style="color:#6366f1">Trulience dashboard</a>, and your Render API URL.</p>
+
+      <div>
+        <label>Avatar ID</label>
+        <input type="text" id="inp-avatar-id" placeholder="e.g. abc123" />
+      </div>
+      <div>
+        <label>Avatar Token <span style="color:#555">(leave blank if not required)</span></label>
+        <input type="text" id="inp-token" placeholder="JWT token" />
+      </div>
+      <div>
+        <label>Render API URL</label>
+        <input type="text" id="inp-api-url" placeholder="https://your-service.onrender.com" />
+      </div>
+
+      <button id="btn-start" onclick="initAvatar()">Launch Avatar</button>
+    </div>
+  </div>
+
+  <!-- Avatar -->
+  <div id="avatar-wrap">
+    <video id="myvideo" webkit-playsinline playsinline crossorigin="anonymous" autoplay></video>
+    <div id="status-badge">Disconnected</div>
+  </div>
+
+  <!-- Controls -->
+  <div id="controls">
+    <div id="btn-row">
+      <button id="btn-connect" onclick="startCall()">📞 Connect</button>
+      <button id="btn-disconnect" onclick="endCall()" disabled>🔴 End</button>
+      <button id="btn-mic" onclick="toggleMic()" disabled>🎤 Mic</button>
+    </div>
+    <div id="text-row">
+      <input id="textBox" type="text" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendText()" disabled />
+      <button id="btn-send" onclick="sendText()" disabled>Send</button>
+    </div>
+  </div>
+
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+  <script src="https://trulience.com/sdk/trulience.sdk.js"></script>
+
+  <script>
+    let trulience = null;
+    let micEnabled = false;
+    let config = {};
+
+    function setStatus(text, cls = '') {
+      const el = document.getElementById('status-badge');
+      el.textContent = text;
+      el.className = cls;
+    }
+
+    function setConnectedUI(connected) {
+      document.getElementById('btn-connect').disabled = connected;
+      document.getElementById('btn-disconnect').disabled = !connected;
+      document.getElementById('btn-mic').disabled = !connected;
+      document.getElementById('textBox').disabled = !connected;
+      document.getElementById('btn-send').disabled = !connected;
+    }
+
+    function initAvatar() {
+      const avatarId = document.getElementById('inp-avatar-id').value.trim();
+      const token    = document.getElementById('inp-token').value.trim();
+      const apiUrl   = document.getElementById('inp-api-url').value.trim().replace(/\/$/, '');
+
+      if (!avatarId || !apiUrl) {
+        alert('Avatar ID and Render API URL are required.');
+        return;
+      }
+
+      config = { avatarId, token, apiUrl };
+      document.getElementById('config-modal').style.display = 'none';
+      setStatus('Ready');
+    }
+
+    function startCall() {
+      if (!config.avatarId) {
+        document.getElementById('config-modal').style.display = 'flex';
+        return;
+      }
+
+      setStatus('Connecting…');
+
+      const builder = new TrulienceBuilder()
+        .setAvatarId(config.avatarId)
+        .setVideoElement(document.getElementById('myvideo'));
+
+      if (config.token) builder.setToken(config.token);
+
+      builder.setEventCallback('auth-success', () => {
+        setStatus('Connected', 'connected');
+        setConnectedUI(true);
+        micEnabled = false;
+        document.getElementById('btn-mic').textContent = '🎤 Mic';
+        document.getElementById('btn-mic').classList.remove('muted');
+      });
+
+      builder.setEventCallback('auth-fail', (err) => {
+        setStatus('Auth failed', 'error');
+        console.error('Auth fail:', err);
+      });
+
+      builder.setEventCallback('trl-avatar-disconnected', () => {
+        setStatus('Disconnected');
+        setConnectedUI(false);
+      });
+
+      trulience = builder.build();
+      trulience.connect();
+    }
+
+    function endCall() {
+      if (trulience) {
+        trulience.disconnect();
+        trulience = null;
+      }
+      setStatus('Disconnected');
+      setConnectedUI(false);
+    }
+
+    function toggleMic() {
+      if (!trulience) return;
+      micEnabled = !micEnabled;
+      trulience.setMicEnabled(micEnabled);
+      const btn = document.getElementById('btn-mic');
+      btn.textContent = micEnabled ? '🔇 Mute' : '🎤 Mic';
+      btn.classList.toggle('muted', micEnabled);
+    }
+
+    function sendText() {
+      const box = document.getElementById('textBox');
+      const msg = box.value.trim();
+      if (!msg || !trulience) return;
+      trulience.sendMessage(msg);
+      box.value = '';
+    }
+  </script>
+</body>
+</html>
