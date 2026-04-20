@@ -1,303 +1,402 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Trulience Avatar</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: system-ui, sans-serif;
-      background: #0f0f0f;
-      color: #f0f0f0;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    #avatar-wrap {
-      flex: 1;
-      position: relative;
-      background: #1a1a1a;
-      overflow: hidden;
-    }
-
-    #myvideo {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    #status-badge {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      background: rgba(0,0,0,0.6);
-      border: 1px solid #333;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      color: #aaa;
-      backdrop-filter: blur(6px);
-    }
-
-    #status-badge.connected { color: #4ade80; border-color: #4ade80; }
-    #status-badge.error     { color: #f87171; border-color: #f87171; }
-
-    #controls {
-      background: #111;
-      border-top: 1px solid #222;
-      padding: 12px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    #btn-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    button {
-      flex: 1;
-      padding: 10px;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.2s;
-    }
-
-    button:disabled { opacity: 0.35; cursor: not-allowed; }
-
-    #btn-connect    { background: #4ade80; color: #0f0f0f; }
-    #btn-disconnect { background: #f87171; color: #0f0f0f; }
-    #btn-mic        { background: #333; color: #f0f0f0; }
-    #btn-mic.muted  { background: #f87171; }
-
-    #text-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    #textBox {
-      flex: 1;
-      background: #1e1e1e;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: #f0f0f0;
-      font-size: 14px;
-      outline: none;
-    }
-
-    #textBox:focus { border-color: #555; }
-
-    #btn-send {
-      flex: 0 0 auto;
-      padding: 10px 18px;
-      background: #6366f1;
-      color: white;
-    }
-
-    /* Config modal */
-    #config-modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.85);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      padding: 20px;
-    }
-
-    #config-box {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 14px;
-      padding: 28px 24px;
-      width: 100%;
-      max-width: 420px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    #config-box h2 { font-size: 18px; font-weight: 700; }
-    #config-box p  { font-size: 13px; color: #888; line-height: 1.5; }
-
-    label { font-size: 13px; color: #aaa; display: block; margin-bottom: 4px; }
-
-    input[type="text"] {
-      width: 100%;
-      background: #111;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 10px 12px;
-      color: #f0f0f0;
-      font-size: 14px;
-      outline: none;
-    }
-
-    input[type="text"]:focus { border-color: #555; }
-
-    #btn-start {
-      background: #6366f1;
-      color: white;
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: 600;
-      margin-top: 4px;
-    }
-  </style>
-</head>
-<body>
-
-  <!-- Config modal shown on first load -->
-  <div id="config-modal">
-    <div id="config-box">
-      <h2>🤖 Trulience Avatar</h2>
-      <p>Enter your Avatar ID and token from the <a href="https://trulience.com" target="_blank" style="color:#6366f1">Trulience dashboard</a>, and your Render API URL.</p>
-
-      <div>
-        <label>Avatar ID</label>
-        <input type="text" id="inp-avatar-id" placeholder="e.g. abc123" />
-      </div>
-      <div>
-        <label>Avatar Token <span style="color:#555">(leave blank if not required)</span></label>
-        <input type="text" id="inp-token" placeholder="JWT token" />
-      </div>
-      <div>
-        <label>Render API URL</label>
-        <input type="text" id="inp-api-url" placeholder="https://your-service.onrender.com" />
-      </div>
-
-      <button id="btn-start" onclick="initAvatar()">Launch Avatar</button>
-    </div>
-  </div>
-
-  <!-- Avatar -->
-  <div id="avatar-wrap">
-    <video id="myvideo" webkit-playsinline playsinline crossorigin="anonymous" autoplay></video>
-    <div id="status-badge">Disconnected</div>
-  </div>
-
-  <!-- Controls -->
-  <div id="controls">
-    <div id="btn-row">
-      <button id="btn-connect" onclick="startCall()">📞 Connect</button>
-      <button id="btn-disconnect" onclick="endCall()" disabled>🔴 End</button>
-      <button id="btn-mic" onclick="toggleMic()" disabled>🎤 Mic</button>
-    </div>
-    <div id="text-row">
-      <input id="textBox" type="text" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendText()" disabled />
-      <button id="btn-send" onclick="sendText()" disabled>Send</button>
-    </div>
-  </div>
-
-  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-  <script src="https://trulience.com/sdk/trulience.sdk.js"></script>
-
-  <script>
-    let trulience = null;
-    let micEnabled = false;
-    let config = {};
-
-    function setStatus(text, cls = '') {
-      const el = document.getElementById('status-badge');
-      el.textContent = text;
-      el.className = cls;
-    }
-
-    function setConnectedUI(connected) {
-      document.getElementById('btn-connect').disabled = connected;
-      document.getElementById('btn-disconnect').disabled = !connected;
-      document.getElementById('btn-mic').disabled = !connected;
-      document.getElementById('textBox').disabled = !connected;
-      document.getElementById('btn-send').disabled = !connected;
-    }
-
-    function initAvatar() {
-      const avatarId = document.getElementById('inp-avatar-id').value.trim();
-      const token    = document.getElementById('inp-token').value.trim();
-      const apiUrl   = document.getElementById('inp-api-url').value.trim().replace(/\/$/, '');
-
-      if (!avatarId || !apiUrl) {
-        alert('Avatar ID and Render API URL are required.');
-        return;
-      }
-
-      config = { avatarId, token, apiUrl };
-      document.getElementById('config-modal').style.display = 'none';
-      setStatus('Ready');
-    }
-
-    function startCall() {
-      if (!config.avatarId) {
-        document.getElementById('config-modal').style.display = 'flex';
-        return;
-      }
-
-      setStatus('Connecting…');
-
-      const builder = new TrulienceBuilder()
-        .setAvatarId(config.avatarId)
-        .setVideoElement(document.getElementById('myvideo'));
-
-      if (config.token) builder.setToken(config.token);
-
-      builder.setEventCallback('auth-success', () => {
-        setStatus('Connected', 'connected');
-        setConnectedUI(true);
-        micEnabled = false;
-        document.getElementById('btn-mic').textContent = '🎤 Mic';
-        document.getElementById('btn-mic').classList.remove('muted');
-      });
-
-      builder.setEventCallback('auth-fail', (err) => {
-        setStatus('Auth failed', 'error');
-        console.error('Auth fail:', err);
-      });
-
-      builder.setEventCallback('trl-avatar-disconnected', () => {
-        setStatus('Disconnected');
-        setConnectedUI(false);
-      });
-
-      trulience = builder.build();
-      trulience.connect();
-    }
-
-    function endCall() {
-      if (trulience) {
-        trulience.disconnect();
-        trulience = null;
-      }
-      setStatus('Disconnected');
-      setConnectedUI(false);
-    }
-
-    function toggleMic() {
-      if (!trulience) return;
-      micEnabled = !micEnabled;
-      trulience.setMicEnabled(micEnabled);
-      const btn = document.getElementById('btn-mic');
-      btn.textContent = micEnabled ? '🔇 Mute' : '🎤 Mic';
-      btn.classList.toggle('muted', micEnabled);
-    }
-
-    function sendText() {
-      const box = document.getElementById('textBox');
-      const msg = box.value.trim();
-      if (!msg || !trulience) return;
-      trulience.sendMessage(msg);
-      box.value = '';
-    }
-  </script>
-</body>
-</html>
+<p dir="ltr">&lt;!DOCTYPE html&gt;<br>
+&lt;html lang="en"&gt;<br>
+&lt;head&gt;<br>
+&nbsp; &lt;meta charset="UTF-8" /&gt;<br>
+&nbsp; &lt;meta name="viewport" content="width=device-width, initial-scale=1.0" /&gt;<br>
+&nbsp; &lt;title&gt;Jason&lt;/title&gt;<br>
+&nbsp; &lt;link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&amp;family=DM+Serif+Display:ital@0;1&amp;display=swap" rel="stylesheet" /&gt;<br>
+&nbsp; &lt;style&gt;<br>
+&nbsp;&nbsp;&nbsp; *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; :root {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; --ink: #1a1a18;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; --muted: #8a8a84;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; --border: #e8e6e0;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; --surface: #f7f6f2;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; --white: #ffffff;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; --accent: #1a1a18;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; --green: #2d6a4f;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; --red: #c0392b;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; --radius: 14px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; body {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-family: 'DM Sans', sans-serif;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: var(--surface);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: var(--ink);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; min-height: 100dvh;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: flex;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flex-direction: column;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; /* &#9472;&#9472; CONFIG SCREEN &#9472;&#9472; */<br>
+&nbsp;&nbsp;&nbsp; #config-screen {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flex: 1;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: flex;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; align-items: center;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; justify-content: center;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; padding: 24px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .config-card {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: var(--white);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border: 1px solid var(--border);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border-radius: 20px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; padding: 40px 36px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width: 100%;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; max-width: 400px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .config-card .wordmark {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-family: 'DM Serif Display', serif;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-size: 28px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; letter-spacing: -0.5px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; margin-bottom: 6px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .config-card .tagline {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-size: 13px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: var(--muted);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; margin-bottom: 32px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .field { margin-bottom: 18px; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .field label {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: block;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-size: 12px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-weight: 500;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: var(--muted);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; text-transform: uppercase;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; letter-spacing: 0.06em;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; margin-bottom: 7px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .field input {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width: 100%;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: var(--surface);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border: 1px solid var(--border);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border-radius: 10px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; padding: 11px 14px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-family: 'DM Sans', sans-serif;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-size: 14px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: var(--ink);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; outline: none;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; transition: border-color 0.15s;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .field input:focus { border-color: var(--ink); }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .field .hint {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-size: 11px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: var(--muted);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; margin-top: 5px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .btn-launch {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width: 100%;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; margin-top: 8px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; padding: 13px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: var(--ink);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: var(--white);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border: none;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border-radius: 10px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-family: 'DM Sans', sans-serif;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-size: 14px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-weight: 500;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cursor: pointer;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; letter-spacing: 0.02em;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; transition: opacity 0.15s;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .btn-launch:hover { opacity: 0.85; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; /* &#9472;&#9472; AVATAR SCREEN &#9472;&#9472; */<br>
+&nbsp;&nbsp;&nbsp; #avatar-screen {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: none;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flex: 1;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flex-direction: column;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; /* header bar */<br>
+&nbsp;&nbsp;&nbsp; .topbar {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: flex;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; align-items: center;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; justify-content: space-between;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; padding: 16px 20px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: var(--white);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border-bottom: 1px solid var(--border);<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .topbar-left {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: flex;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; align-items: center;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gap: 10px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .avatar-dot {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width: 36px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height: 36px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border-radius: 50%;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: var(--surface);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border: 1px solid var(--border);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: flex;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; align-items: center;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; justify-content: center;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-family: 'DM Serif Display', serif;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-size: 15px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: var(--ink);<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .topbar-name {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-size: 15px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-weight: 500;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .status-pill {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: flex;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; align-items: center;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gap: 5px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-size: 12px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: var(--muted);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: var(--surface);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border: 1px solid var(--border);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; padding: 4px 10px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border-radius: 20px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .status-dot {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width: 6px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height: 6px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border-radius: 50%;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: var(--muted);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; transition: background 0.3s;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .status-dot.live { background: var(--green); }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; /* video area */<br>
+&nbsp;&nbsp;&nbsp; .video-wrap {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flex: 1;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: var(--ink);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; position: relative;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; overflow: hidden;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; min-height: 260px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; #myvideo {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width: 100%;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height: 100%;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; object-fit: cover;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: block;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .video-placeholder {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; position: absolute;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inset: 0;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: flex;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flex-direction: column;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; align-items: center;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; justify-content: center;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gap: 12px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .video-placeholder .big-initial {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-family: 'DM Serif Display', serif;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-size: 64px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: rgba(255,255,255,0.12);<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .video-placeholder .placeholder-label {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-size: 13px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: rgba(255,255,255,0.3);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; letter-spacing: 0.04em;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; /* bottom controls */<br>
+&nbsp;&nbsp;&nbsp; .controls {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: var(--white);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border-top: 1px solid var(--border);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; padding: 16px 20px 20px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: flex;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flex-direction: column;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gap: 12px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .btn-row {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: flex;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gap: 8px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .ctrl-btn {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flex: 1;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; padding: 11px 8px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border-radius: 10px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border: 1px solid var(--border);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: var(--surface);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-family: 'DM Sans', sans-serif;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-size: 13px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-weight: 500;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: var(--ink);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cursor: pointer;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; transition: background 0.15s, border-color 0.15s, opacity 0.15s;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: flex;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; align-items: center;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; justify-content: center;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gap: 6px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .ctrl-btn:hover:not(:disabled) { background: var(--border); }<br>
+&nbsp;&nbsp;&nbsp; .ctrl-btn:disabled { opacity: 0.35; cursor: not-allowed; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .ctrl-btn.primary {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: var(--ink);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: var(--white);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border-color: var(--ink);<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .ctrl-btn.primary:hover:not(:disabled) { opacity: 0.85; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .ctrl-btn.danger {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: #fff0f0;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: var(--red);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border-color: #f5c6c6;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .ctrl-btn.danger:hover:not(:disabled) { background: #ffe0e0; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .ctrl-btn.muted-active {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: #fff0f0;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: var(--red);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border-color: #f5c6c6;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; .text-row {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display: flex;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gap: 8px;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; #textBox {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flex: 1;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background: var(--surface);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border: 1px solid var(--border);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border-radius: 10px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; padding: 11px 14px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-family: 'DM Sans', sans-serif;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font-size: 14px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: var(--ink);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; outline: none;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; transition: border-color 0.15s;<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; #textBox:focus { border-color: var(--ink); }<br>
+&nbsp;&nbsp;&nbsp; #textBox:disabled { opacity: 0.4; cursor: not-allowed; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; #btn-send {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; padding: 11px 18px;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flex-shrink: 0;<br>
+&nbsp;&nbsp;&nbsp; }<br>
+&nbsp; &lt;/style&gt;<br>
+&lt;/head&gt;<br>
+&lt;body&gt;</p>
+<p dir="ltr">&nbsp; &lt;!-- CONFIG SCREEN --&gt;<br>
+&nbsp; &lt;div id="config-screen"&gt;<br>
+&nbsp;&nbsp;&nbsp; &lt;div class="config-card"&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="wordmark"&gt;Jason&lt;/div&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="tagline"&gt;Your interactive AI avatar&lt;/div&gt;</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="field"&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;label&gt;Avatar ID&lt;/label&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;input type="text" id="inp-avatar-id" placeholder="7265192370790681411" value="7265192370790681411" /&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;/div&gt;</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="field"&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;label&gt;Avatar Token&lt;/label&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;input type="text" id="inp-token" placeholder="Leave blank if not required" /&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="hint"&gt;Optional &#8212; leave empty unless your avatar requires auth&lt;/div&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;/div&gt;</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;button class="btn-launch" onclick="initAvatar()"&gt;Start conversation&lt;/button&gt;<br>
+&nbsp;&nbsp;&nbsp; &lt;/div&gt;<br>
+&nbsp; &lt;/div&gt;</p>
+<p dir="ltr">&nbsp; &lt;!-- AVATAR SCREEN --&gt;<br>
+&nbsp; &lt;div id="avatar-screen"&gt;</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; &lt;div class="topbar"&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="topbar-left"&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="avatar-dot"&gt;J&lt;/div&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;span class="topbar-name"&gt;Jason&lt;/span&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;/div&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="status-pill"&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="status-dot" id="status-dot"&gt;&lt;/div&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;span id="status-text"&gt;Disconnected&lt;/span&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;/div&gt;<br>
+&nbsp;&nbsp;&nbsp; &lt;/div&gt;</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; &lt;div class="video-wrap"&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;video id="myvideo" webkit-playsinline playsinline crossorigin="anonymous" autoplay&gt;&lt;/video&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="video-placeholder" id="video-placeholder"&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="big-initial"&gt;J&lt;/div&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="placeholder-label"&gt;Press connect to begin&lt;/div&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;/div&gt;<br>
+&nbsp;&nbsp;&nbsp; &lt;/div&gt;</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; &lt;div class="controls"&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="btn-row"&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;button class="ctrl-btn primary" id="btn-connect" onclick="startCall()"&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Connect<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;/button&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;button class="ctrl-btn danger" id="btn-disconnect" onclick="endCall()" disabled&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; End<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;/button&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;button class="ctrl-btn" id="btn-mic" onclick="toggleMic()" disabled&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Mic off<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;/button&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;/div&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;div class="text-row"&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;input id="textBox" type="text" placeholder="Type a message to Jason&#8230;" onkeydown="if(event.key==='Enter') sendText()" disabled /&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;button class="ctrl-btn primary" id="btn-send" onclick="sendText()" disabled&gt;Send&lt;/button&gt;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;/div&gt;<br>
+&nbsp;&nbsp;&nbsp; &lt;/div&gt;</p>
+<p dir="ltr">&nbsp; &lt;/div&gt;</p>
+<p dir="ltr">&nbsp; &lt;script src="https://webrtc.github.io/adapter/adapter-latest.js"&gt;&lt;/script&gt;<br>
+&nbsp; &lt;script src="https://trulience.com/sdk/trulience.sdk.js"&gt;&lt;/script&gt;</p>
+<p dir="ltr">&nbsp; &lt;script&gt;<br>
+&nbsp;&nbsp;&nbsp; let trulience = null;<br>
+&nbsp;&nbsp;&nbsp; let micEnabled = false;<br>
+&nbsp;&nbsp;&nbsp; let cfg = {};</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; function setStatus(text, live) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; document.getElementById('status-text').textContent = text;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; const dot = document.getElementById('status-dot');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dot.className = 'status-dot' + (live ? ' live' : '');<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; function setConnectedUI(connected) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; document.getElementById('btn-connect').disabled = connected;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; document.getElementById('btn-disconnect').disabled = !connected;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; document.getElementById('btn-mic').disabled = !connected;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; document.getElementById('textBox').disabled = !connected;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; document.getElementById('btn-send').disabled = !connected;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (connected) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; document.getElementById('video-placeholder').style.display = 'none';<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; function initAvatar() {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; const avatarId = document.getElementById('inp-avatar-id').value.trim();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; const token&nbsp;&nbsp;&nbsp; = document.getElementById('inp-token').value.trim();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!avatarId) { alert('Please enter an Avatar ID.'); return; }<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cfg = { avatarId, token };<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; document.getElementById('config-screen').style.display = 'none';<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; document.getElementById('avatar-screen').style.display = 'flex';<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setStatus('Ready', false);<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; function startCall() {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setStatus('Connecting&#8230;', false);</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; const builder = new TrulienceBuilder()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .setAvatarId(cfg.avatarId)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .setVideoElement(document.getElementById('myvideo'));</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (cfg.token) builder.setToken(cfg.token);</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; builder.setEventCallback('auth-success', () =&gt; {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setStatus('Live', true);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setConnectedUI(true);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; micEnabled = false;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; updateMicBtn();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; });</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; builder.setEventCallback('auth-fail', (err) =&gt; {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setStatus('Auth failed', false);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; console.error(err);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; });</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; builder.setEventCallback('trl-avatar-disconnected', () =&gt; {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setStatus('Disconnected', false);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setConnectedUI(false);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; document.getElementById('video-placeholder').style.display = 'flex';<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; });</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; trulience = builder.build();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; trulience.connect();<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; function endCall() {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (trulience) { trulience.disconnect(); trulience = null; }<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setStatus('Disconnected', false);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; setConnectedUI(false);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; document.getElementById('video-placeholder').style.display = 'flex';<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; function updateMicBtn() {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; const btn = document.getElementById('btn-mic');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (micEnabled) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; btn.textContent = 'Mute';<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; btn.classList.add('muted-active');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; btn.textContent = 'Mic off';<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; btn.classList.remove('muted-active');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; function toggleMic() {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!trulience) return;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; micEnabled = !micEnabled;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; trulience.setMicEnabled(micEnabled);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; updateMicBtn();<br>
+&nbsp;&nbsp;&nbsp; }</p>
+<p dir="ltr">&nbsp;&nbsp;&nbsp; function sendText() {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; const box = document.getElementById('textBox');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; const msg = box.value.trim();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!msg || !trulience) return;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; trulience.sendMessage(msg);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; box.value = '';<br>
+&nbsp;&nbsp;&nbsp; }<br>
+&nbsp; &lt;/script&gt;</p>
+<p dir="ltr">&lt;/body&gt;<br>
+&lt;/html&gt;</p>
