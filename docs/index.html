@@ -1,468 +1,214 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Jason</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --ink: #1a1a18;
-      --muted: #8a8a84;
-      --border: #e8e6e0;
-      --surface: #f7f6f2;
-      --white: #ffffff;
-      --accent: #1a1a18;
-      --green: #2d6a4f;
-      --red: #c0392b;
-      --radius: 14px;
-    }
-
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--surface);
-      color: var(--ink);
-      min-height: 100dvh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* ── CONFIG SCREEN ── */
-    #config-screen {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-
-    .config-card {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 40px 36px;
-      width: 100%;
-      max-width: 400px;
-    }
-
-    .config-card .wordmark {
-      font-family: 'DM Serif Display', serif;
-      font-size: 28px;
-      letter-spacing: -0.5px;
-      margin-bottom: 6px;
-    }
-
-    .config-card .tagline {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 32px;
-    }
-
-    .field { margin-bottom: 18px; }
-
-    .field label {
-      display: block;
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 7px;
-    }
-
-    .field input {
-      width: 100%;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 11px 14px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px;
-      color: var(--ink);
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    .field input:focus { border-color: var(--ink); }
-
-    .field .hint {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 5px;
-    }
-
-    .btn-launch {
-      width: 100%;
-      margin-top: 8px;
-      padding: 13px;
-      background: var(--ink);
-      color: var(--white);
-      border: none;
-      border-radius: 10px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      letter-spacing: 0.02em;
-      transition: opacity 0.15s;
-    }
-
-    .btn-launch:hover { opacity: 0.85; }
-
-    /* ── AVATAR SCREEN ── */
-    #avatar-screen {
-      display: none;
-      flex: 1;
-      flex-direction: column;
-    }
-
-    /* header bar */
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 20px;
-      background: var(--white);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .topbar-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .avatar-dot {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'DM Serif Display', serif;
-      font-size: 15px;
-      color: var(--ink);
-    }
-
-    .topbar-name {
-      font-size: 15px;
-      font-weight: 500;
-    }
-
-    .status-pill {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      color: var(--muted);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 4px 10px;
-      border-radius: 20px;
-    }
-
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--muted);
-      transition: background 0.3s;
-    }
-
-    .status-dot.live { background: var(--green); }
-
-    /* video area */
-    .video-wrap {
-      flex: 1;
-      background: var(--ink);
-      position: relative;
-      overflow: hidden;
-      min-height: 260px;
-    }
-
-    #myvideo {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .video-placeholder {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-    }
-
-    .video-placeholder .big-initial {
-      font-family: 'DM Serif Display', serif;
-      font-size: 64px;
-      color: rgba(255,255,255,0.12);
-    }
-
-    .video-placeholder .placeholder-label {
-      font-size: 13px;
-      color: rgba(255,255,255,0.3);
-      letter-spacing: 0.04em;
-    }
-
-    /* bottom controls */
-    .controls {
-      background: var(--white);
-      border-top: 1px solid var(--border);
-      padding: 16px 20px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .btn-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    .ctrl-btn {
-      flex: 1;
-      padding: 11px 8px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      font-family: 'DM Sans', sans-serif;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--ink);
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-
-    .ctrl-btn:hover:not(:disabled) { background: var(--border); }
-    .ctrl-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-
-    .ctrl-btn.primary {
-      background: var(--ink);
-      color: var(--white);
-      border-color: var(--ink);
-    }
-
-    .ctrl-btn.primary:hover:not(:disabled) { opacity: 0.85; }
-
-    .ctrl-btn.danger {
-      background: #fff0f0;
-      color: var(--red);
-      border-color: #f5c6c6;
-    }
-
-    .ctrl-btn.danger:hover:not(:disabled) { background: #ffe0e0; }
-
-    .ctrl-btn.muted-active {
-      background: #fff0f0;
-      color: var(--red);
-      border-color: #f5c6c6;
-    }
-
-    .text-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    #textBox {
-      flex: 1;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 11px 14px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px;
-      color: var(--ink);
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    #textBox:focus { border-color: var(--ink); }
-    #textBox:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    #btn-send {
-      padding: 11px 18px;
-      flex-shrink: 0;
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jason</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Helvetica Neue', 'Arial', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body { height: 100%; }
+    #myvideo { width: 100%; height: 100%; object-fit: cover; display: block; }
+  </style>
 </head>
-<body>
+<body class="bg-gray-50 text-gray-900 flex flex-col min-h-screen">
 
-  <!-- CONFIG SCREEN -->
-  <div id="config-screen">
-    <div class="config-card">
-      <div class="wordmark">Jason</div>
-      <div class="tagline">Your interactive AI avatar</div>
+  <!-- CONFIG SCREEN -->
+  <div id="config-screen" class="flex-1 flex items-center justify-center p-6">
+    <div class="bg-white border border-gray-200 rounded-2xl p-8 w-full max-w-sm shadow-sm">
 
-      <div class="field">
-        <label>Avatar ID</label>
-        <input type="text" id="inp-avatar-id" placeholder="7265192370790681411" value="7265192370790681411" />
-      </div>
+      <div class="mb-6">
+        <h1 class="text-2xl font-semibold tracking-tight">Jason</h1>
+        <p class="text-sm text-gray-400 mt-1">Your interactive AI avatar</p>
+      </div>
 
-      <div class="field">
-        <label>Avatar Token</label>
-        <input type="text" id="inp-token" placeholder="Leave blank if not required" />
-        <div class="hint">Optional — leave empty unless your avatar requires auth</div>
-      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-400 uppercase tracking-widest mb-1.5">Avatar ID</label>
+          <input
+            id="inp-avatar-id"
+            type="text"
+            value="7265192370790681411"
+            class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-900 transition-colors"
+          />
+        </div>
 
-      <button class="btn-launch" onclick="initAvatar()">Start conversation</button>
-    </div>
-  </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-400 uppercase tracking-widest mb-1.5">Token</label>
+          <input
+            id="inp-token"
+            type="text"
+            placeholder="Leave blank if not required"
+            class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-900 transition-colors"
+          />
+          <p class="text-xs text-gray-400 mt-1.5">Optional — leave empty unless your avatar requires auth</p>
+        </div>
 
-  <!-- AVATAR SCREEN -->
-  <div id="avatar-screen">
+        <button
+          onclick="initAvatar()"
+          class="w-full bg-gray-900 hover:bg-gray-700 text-white rounded-xl py-3 text-sm font-medium transition-colors mt-2"
+        >
+          Start conversation
+        </button>
+      </div>
+    </div>
+  </div>
 
-    <div class="topbar">
-      <div class="topbar-left">
-        <div class="avatar-dot">J</div>
-        <span class="topbar-name">Jason</span>
-      </div>
-      <div class="status-pill">
-        <div class="status-dot" id="status-dot"></div>
-        <span id="status-text">Disconnected</span>
-      </div>
-    </div>
+  <!-- AVATAR SCREEN -->
+  <div id="avatar-screen" class="hidden flex-col flex-1">
 
-    <div class="video-wrap">
-      <video id="myvideo" webkit-playsinline playsinline crossorigin="anonymous" autoplay></video>
-      <div class="video-placeholder" id="video-placeholder">
-        <div class="big-initial">J</div>
-        <div class="placeholder-label">Press connect to begin</div>
-      </div>
-    </div>
+    <!-- Top bar -->
+    <div class="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-sm font-semibold text-gray-700">J</div>
+        <span class="text-sm font-medium">Jason</span>
+      </div>
+      <div class="flex items-center gap-1.5 text-xs text-gray-400 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-full">
+        <div id="status-dot" class="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+        <span id="status-text">Disconnected</span>
+      </div>
+    </div>
 
-    <div class="controls">
-      <div class="btn-row">
-        <button class="ctrl-btn primary" id="btn-connect" onclick="startCall()">
-          Connect
-        </button>
-        <button class="ctrl-btn danger" id="btn-disconnect" onclick="endCall()" disabled>
-          End
-        </button>
-        <button class="ctrl-btn" id="btn-mic" onclick="toggleMic()" disabled>
-          Mic off
-        </button>
-      </div>
-      <div class="text-row">
-        <input id="textBox" type="text" placeholder="Type a message to Jason…" onkeydown="if(event.key==='Enter') sendText()" disabled />
-        <button class="ctrl-btn primary" id="btn-send" onclick="sendText()" disabled>Send</button>
-      </div>
-    </div>
+    <!-- Video -->
+    <div class="flex-1 bg-gray-900 relative overflow-hidden" style="min-height: 280px;">
+      <video id="myvideo" webkit-playsinline playsinline crossorigin="anonymous" autoplay></video>
+      <div id="video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center gap-3">
+        <span class="text-7xl font-semibold text-white/10">J</span>
+        <span class="text-xs text-white/30 tracking-wider">Press connect to begin</span>
+      </div>
+    </div>
 
-  </div>
+    <!-- Controls -->
+    <div class="bg-white border-t border-gray-100 px-4 pt-4 pb-5 space-y-3">
+      <div class="flex gap-2">
+        <button id="btn-connect" onclick="startCall()"
+          class="flex-1 bg-gray-900 hover:bg-gray-700 disabled:opacity-30 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">
+          Connect
+        </button>
+        <button id="btn-disconnect" onclick="endCall()" disabled
+          class="flex-1 bg-red-50 hover:bg-red-100 disabled:opacity-30 text-red-600 border border-red-200 rounded-xl py-2.5 text-sm font-medium transition-colors">
+          End
+        </button>
+        <button id="btn-mic" onclick="toggleMic()" disabled
+          class="flex-1 bg-gray-50 hover:bg-gray-100 disabled:opacity-30 text-gray-700 border border-gray-200 rounded-xl py-2.5 text-sm font-medium transition-colors">
+          Mic
+        </button>
+      </div>
+      <div class="flex gap-2">
+        <input id="textBox" type="text" disabled placeholder="Type a message to Jason…"
+          onkeydown="if(event.key==='Enter') sendText()"
+          class="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-gray-900 disabled:opacity-40 transition-colors" />
+        <button id="btn-send" onclick="sendText()" disabled
+          class="bg-gray-900 hover:bg-gray-700 disabled:opacity-30 text-white rounded-xl px-4 text-sm font-medium transition-colors">
+          Send
+        </button>
+      </div>
+    </div>
 
-  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-  <script src="https://trulience.com/sdk/trulience.sdk.js"></script>
+  </div>
 
-  <script>
-    let trulience = null;
-    let micEnabled = false;
-    let cfg = {};
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+  <script src="https://trulience.com/sdk/trulience.sdk.js"></script>
+  <script>
+    let trulience = null;
+    let micEnabled = false;
+    let cfg = {};
 
-    function setStatus(text, live) {
-      document.getElementById('status-text').textContent = text;
-      const dot = document.getElementById('status-dot');
-      dot.className = 'status-dot' + (live ? ' live' : '');
-    }
+    function setStatus(text, live) {
+      document.getElementById('status-text').textContent = text;
+      document.getElementById('status-dot').className =
+        'w-1.5 h-1.5 rounded-full ' + (live ? 'bg-green-500' : 'bg-gray-300');
+    }
 
-    function setConnectedUI(connected) {
-      document.getElementById('btn-connect').disabled = connected;
-      document.getElementById('btn-disconnect').disabled = !connected;
-      document.getElementById('btn-mic').disabled = !connected;
-      document.getElementById('textBox').disabled = !connected;
-      document.getElementById('btn-send').disabled = !connected;
-      if (connected) {
-        document.getElementById('video-placeholder').style.display = 'none';
-      }
-    }
+    function setConnectedUI(connected) {
+      document.getElementById('btn-connect').disabled = connected;
+      document.getElementById('btn-disconnect').disabled = !connected;
+      document.getElementById('btn-mic').disabled = !connected;
+      document.getElementById('textBox').disabled = !connected;
+      document.getElementById('btn-send').disabled = !connected;
+      if (connected) document.getElementById('video-placeholder').style.display = 'none';
+    }
 
-    function initAvatar() {
-      const avatarId = document.getElementById('inp-avatar-id').value.trim();
-      const token    = document.getElementById('inp-token').value.trim();
-      if (!avatarId) { alert('Please enter an Avatar ID.'); return; }
-      cfg = { avatarId, token };
-      document.getElementById('config-screen').style.display = 'none';
-      document.getElementById('avatar-screen').style.display = 'flex';
-      setStatus('Ready', false);
-    }
+    function initAvatar() {
+      const avatarId = document.getElementById('inp-avatar-id').value.trim();
+      const token = document.getElementById('inp-token').value.trim();
+      if (!avatarId) { alert('Please enter an Avatar ID.'); return; }
+      cfg = { avatarId, token };
+      document.getElementById('config-screen').style.display = 'none';
+      document.getElementById('avatar-screen').style.display = 'flex';
+      setStatus('Ready', false);
+    }
 
-    function startCall() {
-      setStatus('Connecting…', false);
+    function startCall() {
+      setStatus('Connecting…', false);
+      const builder = new TrulienceBuilder()
+        .setAvatarId(cfg.avatarId)
+        .setVideoElement(document.getElementById('myvideo'));
+      if (cfg.token) builder.setToken(cfg.token);
+      builder.setEventCallback('auth-success', () => {
+        setStatus('Live', true);
+        setConnectedUI(true);
+        micEnabled = false;
+        updateMicBtn();
+      });
+      builder.setEventCallback('auth-fail', err => {
+        setStatus('Auth failed', false);
+        console.error(err);
+      });
+      builder.setEventCallback('trl-avatar-disconnected', () => {
+        setStatus('Disconnected', false);
+        setConnectedUI(false);
+        document.getElementById('video-placeholder').style.display = 'flex';
+      });
+      trulience = builder.build();
+      trulience.connect();
+    }
 
-      const builder = new TrulienceBuilder()
-        .setAvatarId(cfg.avatarId)
-        .setVideoElement(document.getElementById('myvideo'));
+    function endCall() {
+      if (trulience) { trulience.disconnect(); trulience = null; }
+      setStatus('Disconnected', false);
+      setConnectedUI(false);
+      document.getElementById('video-placeholder').style.display = 'flex';
+    }
 
-      if (cfg.token) builder.setToken(cfg.token);
+    function updateMicBtn() {
+      const btn = document.getElementById('btn-mic');
+      if (micEnabled) {
+        btn.textContent = 'Mute';
+        btn.classList.remove('bg-gray-50', 'text-gray-700', 'border-gray-200');
+        btn.classList.add('bg-red-50', 'text-red-600', 'border-red-200');
+      } else {
+        btn.textContent = 'Mic';
+        btn.classList.remove('bg-red-50', 'text-red-600', 'border-red-200');
+        btn.classList.add('bg-gray-50', 'text-gray-700', 'border-gray-200');
+      }
+    }
 
-      builder.setEventCallback('auth-success', () => {
-        setStatus('Live', true);
-        setConnectedUI(true);
-        micEnabled = false;
-        updateMicBtn();
-      });
+    function toggleMic() {
+      if (!trulience) return;
+      micEnabled = !micEnabled;
+      trulience.setMicEnabled(micEnabled);
+      updateMicBtn();
+    }
 
-      builder.setEventCallback('auth-fail', (err) => {
-        setStatus('Auth failed', false);
-        console.error(err);
-      });
-
-      builder.setEventCallback('trl-avatar-disconnected', () => {
-        setStatus('Disconnected', false);
-        setConnectedUI(false);
-        document.getElementById('video-placeholder').style.display = 'flex';
-      });
-
-      trulience = builder.build();
-      trulience.connect();
-    }
-
-    function endCall() {
-      if (trulience) { trulience.disconnect(); trulience = null; }
-      setStatus('Disconnected', false);
-      setConnectedUI(false);
-      document.getElementById('video-placeholder').style.display = 'flex';
-    }
-
-    function updateMicBtn() {
-      const btn = document.getElementById('btn-mic');
-      if (micEnabled) {
-        btn.textContent = 'Mute';
-        btn.classList.add('muted-active');
-      } else {
-        btn.textContent = 'Mic off';
-        btn.classList.remove('muted-active');
-      }
-    }
-
-    function toggleMic() {
-      if (!trulience) return;
-      micEnabled = !micEnabled;
-      trulience.setMicEnabled(micEnabled);
-      updateMicBtn();
-    }
-
-    function sendText() {
-      const box = document.getElementById('textBox');
-      const msg = box.value.trim();
-      if (!msg || !trulience) return;
-      trulience.sendMessage(msg);
-      box.value = '';
-    }
-  </script>
+    function sendText() {
+      const box = document.getElementById('textBox');
+      const msg = box.value.trim();
+      if (!msg || !trulience) return;
+      trulience.sendMessage(msg);
+      box.value = '';
+    }
+  </script>
 
 </body>
 </html>
-
